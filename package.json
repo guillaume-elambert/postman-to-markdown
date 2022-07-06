@@ -1,10 +1,10 @@
-{
+{ "type": "module",
   "name": "postman-to-markdown",
   "version": "1.0.6",
   "description": "Generate documentation in markdown from postman documentation.",
   "main": "./src/index.js",
   "scripts": {
-    "test": "node ./src/test.js ./example/kmk-blog.postman_collection.json"
+    "test": "node ./src/test.js \"./example/Executor API.postman_collection.json\" \"./example/TEST_EXECUTOR_WEBSERVICES.postman_collection.json\""
   },
   "keywords": [
     "postman",
