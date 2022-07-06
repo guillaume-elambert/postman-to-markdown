@@ -6,12 +6,22 @@ const chalk = require(`chalk`)
  * @param {object} docJson 
  * @return {strinf} structure of markdown
  */
-function createStructureOfMarkdown(docJson){
+function createStructureOfMarkdown(docJson, initialFolder){
     let markdown = ''
+
+    let temp = JSON.stringify(docJson);
+
+    for(let i = 0; i < docJson.variable.length; ++i){
+        let variable = docJson.variable[i];
+        temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`)
+    }
+
+    docJson = JSON.parse(temp);
 
     markdown += `# Project: ${docJson.info.name}\n`
     markdown += docJson.info.description !== undefined ? `${docJson.info.description || ''}\n` :``
-    markdown += readItems(docJson.item)
+    
+    readItems(docJson.item, markdown, initialFolder)
 
     return markdown
 }
@@ -116,13 +126,43 @@ function readFormDataBody(body) {
  */
 function readResponse(responses) {
     let markdown = ''
-    if (responses?.length) {
-        const response = responses[0];
-        markdown += `### Response: ${response.code}\n`
+    markdown += `<br/>\n\n### Examples\n\n<br/>\n\n`
+
+    for ( let i = 0; i < responses.length; i++ ) {
+        let response = responses[i];
+        let originalRequest = response.originalRequest;
+        markdown += `<details><summary>Example ${i+1} • ${response.name}</summary>\n`
+        markdown += `\n`
+        markdown += "Request :\n"
+        markdown += `\`\`\`sh\n`
+
+        let url = originalRequest.url.raw;
+        
+        for(let j = 0; originalRequest.url.variable && j < originalRequest.url.variable.length; j++){
+            let variable = originalRequest.url.variable[j];
+            url = url.replaceAll(`:${variable.key}`, `${variable.value}`)
+        }
+
+        //for(let j = 0; originalRequest.url.request && j < originalRequest.url.request.length; j++){
+        //    let requestVariable = originalRequest.url.variable[j];
+        //    url = url.replaceAll(`${requestVariable.key}=`, `${requestVariable.value}`)
+        //}
+
+        markdown += `curl --location --request ${originalRequest.method} '${url}'`
+        if(originalRequest.header) markdown +=  "\\\n";
+
+        for(let j = 0; j < originalRequest.header.length; j++){
+            let header = originalRequest.header[j]
+            markdown += `--header '${header.key}: ${header.value}' \\\n`
+        }
+        if(originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`
+        markdown += `\`\`\`\n`
+
+        markdown += `Response :\n`
         markdown += `\`\`\`json\n`
         markdown += `${response.body}\n`
         markdown += `\`\`\`\n`
-        markdown += `\n`
+        markdown += `\n</details>\n\n`
     }
     return markdown;
 }
@@ -147,7 +187,7 @@ function readMethods(method){
     markdown += readAuthorization(method?.request?.auth)
     markdown += readResponse(method?.response)
     markdown += `\n`
-    markdown += `⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n`
+    markdown += `\n<br/>\n\n⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n\n<br/>\n`
     
     return markdown
 }
@@ -156,18 +196,22 @@ function readMethods(method){
  * Read items of json postman
  * @param {Array} items
  */
-function readItems(items, folderDeep = 1) {
-    let markdown = ''
+function readItems(items, markdown, folderName, folderDeep = 1) {
     items.forEach(item => { 
         if (item.item) {
-            markdown += `${'#'.repeat(folderDeep)} 📁 Collection: ${item.name} \n`
-            markdown += readItems(item.item, folderDeep + 1)
+            readItems(item.item, markdown, folderName + item.name + '/', folderDeep + 1)
         } else {
-            markdown += readMethods(item)
+            let temp = readMethods(item)
+            writeFile(temp, folderName + item.name)
+            markdown += temp
         }
     })
     
-    return markdown
+    //return markdown
+}
+
+function writeDirectory(dirpath) {
+    fs.mkdirSync(dirpath, { recursive: true });
 }
 
 /**
@@ -175,6 +219,13 @@ function readItems(items, folderDeep = 1) {
  * @param {string} content 
  */
 function writeFile(content, fileName){
+    fileName = fileName.replaceAll(' ', '_')
+    let folder = fileName.replace(/\/[^\/]+\/?$/, '');
+
+    //for(let i = 0; i < folder.length -1; i++){
+        writeDirectory(folder);
+    //}
+
     fs.writeFile(`${fileName}.md`, content, function (err) {
         if (err) throw err;
         console.log(chalk.green(`Documentation was created correctly ${fileName}.md`))
