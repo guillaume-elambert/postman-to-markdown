@@ -36,18 +36,18 @@ export default class PostmanToMdConverter {
 
         for (let i = 0; i < this.docJson.variable.length; ++i) {
             let variable = this.docJson.variable[i];
-            temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`)
+            temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`);
         }
 
         this.docJson = JSON.parse(temp);
         this.projectName = this.docJson.info.name;
 
         
-        this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`
-        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n` : ``
+        this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`;
+        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n` : ``;
         
 
-        this.readItems(this.docJson.item, this.outputFolder)
+        this.readItems(this.docJson.item);
     }
 
     /**
@@ -82,33 +82,33 @@ export default class PostmanToMdConverter {
         let markdown = ''
         if (request) {
             request.header.map(header => {
-                markdown += `### Headers\n`
-                markdown += `\n`
-                markdown += `|Content-Type|Value|\n`
-                markdown += `|---|---|\n`
-                markdown += `|${header.key}|${header.value}|\n`
-                markdown += `\n`
-                markdown += `\n`
+                markdown += `### Headers\n`;
+                markdown += `\n`;
+                markdown += `|Content-Type|Value|\n`;
+                markdown += `|---|---|\n`;
+                markdown += `|${header.key}|${header.value}|\n`;
+                markdown += `\n`;
+                markdown += `\n`;
             })
         }
-        return markdown
+        return markdown;
     }
 
     readQueryParams(url) {
         let markdown = ''
         if (url?.query) {
-            markdown += `### Query Params\n`
-            markdown += `\n`
-            markdown += `|Param|value|\n`
-            markdown += `|---|---|\n`
-            url.query.map(query => {
-                markdown += `|${query.key}|${query.value}|\n`
-            })
-            markdown += `\n`
-            markdown += `\n`
+            markdown += `### Query Params\n`;
+            markdown += `\n`;
+            markdown += `|Param|value|\n`;
+            markdown += `|---|---|\n`;
+            url.query.map(query => {;
+                markdown += `|${query.key}|${query.value}|\n`;
+            });
+            markdown += `\n`;
+            markdown += `\n`;
         }
 
-        return markdown
+        return markdown;
     }
 
     /**
@@ -120,28 +120,28 @@ export default class PostmanToMdConverter {
 
         if (body) {
             if (body.mode === 'raw') {
-                markdown += `### Body (**${body.mode}**)\n`
-                markdown += `\n`
-                markdown += `\`\`\`json\n`
-                markdown += `${body.raw}\n`
-                markdown += `\`\`\`\n`
-                markdown += `\n`
+                markdown += `### Body (**${body.mode}**)\n`;
+                markdown += `\n`;
+                markdown += `\`\`\`json\n`;
+                markdown += `${body.raw}\n`;
+                markdown += `\`\`\`\n`;
+                markdown += `\n`;
             }
 
             if (body.mode === 'formdata') {
-                markdown += `### Body ${body.mode}\n`
-                markdown += `\n`
-                markdown += `|Param|value|Type|\n`
-                markdown += `|---|---|---|\n`
-                body.formdata.map(form => {
-                    markdown += `|${form.key}|${form.type === 'file' ? form.src : form.value !== undefined ? form.value.replace(/\\n/g,'') : '' }|${form.type}|\n`
-                })
-                markdown += `\n`
-                markdown += `\n`
+                markdown += `### Body ${body.mode}\n`;
+                markdown += `\n`;
+                markdown += `|Param|value|Type|\n`;
+                markdown += `|---|---|---|\n`;
+                body.formdata.map(form => {;
+                    markdown += `|${form.key}|${form.type === 'file' ? form.src : form.value !== undefined ? form.value.replace(/\\n/g,'') : '' }|${form.type}|\n`;
+                });
+                markdown += `\n`;
+                markdown += `\n`;
             }
         }
 
-        return markdown
+        return markdown;
     }
 
     /**
@@ -149,41 +149,42 @@ export default class PostmanToMdConverter {
      * @param {array} responses 
      */
     readResponse(responses) {
-        let markdown = ''
-        markdown += `<br/>\n\n### Examples\n\n<br/>\n\n`
+        let markdown = '';
+        markdown += `<br/>\n\n### Examples\n\n<br/>\n\n`;
 
         for (let i = 0; i < responses.length; i++) {
             let response = responses[i];
             let originalRequest = response.originalRequest;
-            markdown += `<details><summary>Example ${i+1} • ${response.name}</summary>\n`
-            markdown += `\n`
-            markdown += "Request :\n"
-            markdown += `\`\`\`sh\n`
+            markdown += `<details><summary>Example ${i+1} • ${response.name}</summary>\n`;
+            markdown += `\n`;
+            markdown += "Request :\n";
+            markdown += `\`\`\`sh\n`;
 
             let url = originalRequest.url.raw;
 
             
             for (let j = 0; originalRequest?.url?.variable && j < originalRequest.url.variable.length; j++) {
                 let variable = originalRequest.url.variable[j];
-                url = url.replaceAll(`:${variable.key}`, `${variable.value}`)
+                url = url.replaceAll(`:${variable.key}`, `${variable.value}`);
             }
 
             markdown += `curl --location --request ${originalRequest.method} '${url}'`
             if (originalRequest.header) markdown += "\\\n";
 
             for (let j = 0; originalRequest?.header && j < originalRequest.header.length; j++) {
-                let header = originalRequest.header[j]
-                markdown += `--header '${header.key}: ${header.value}' \\\n`
+                let header = originalRequest.header[j];
+                markdown += `--header '${header.key}: ${header.value}' \\\n`;
             }
-            if (originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`
-            markdown += `\`\`\`\n`
+            if (originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`;
+            markdown += `\`\`\`\n`;
 
-            markdown += `Response :\n`
-            markdown += `\`\`\`json\n`
-            markdown += `${response.body}\n`
-            markdown += `\`\`\`\n`
-            markdown += `\n</details>\n\n`
+            markdown += `Response :\n`;
+            markdown += `\`\`\`json\n`;
+            markdown += `${response.body}\n`;
+            markdown += `\`\`\`\n`;
+            markdown += `\n</details>\n\n`;
         }
+
         return markdown;
     }
 
@@ -194,22 +195,22 @@ export default class PostmanToMdConverter {
     readMethods(method) {
         let markdown = ''
 
-        markdown += `\n`
-        markdown += `## End-point: ${method.name}\n`
-        markdown += method?.request?.description !== undefined ? `${method?.request?.description || ''}\n` : ``
-        markdown += `### Method: ${method?.request?.method}\n`
-        markdown += `>\`\`\`\n`
-        markdown += `>${method?.request?.url?.raw}\n`
-        markdown += `>\`\`\`\n`
-        markdown += this.readRequestOptions(method?.request)
-        markdown += this.readFormDataBody(method?.request?.body)
-        markdown += this.readQueryParams(method?.request?.url)
-        markdown += this.readAuthorization(method?.request?.auth)
-        markdown += this.readResponse(method?.response)
-        markdown += `\n`
-        //markdown += `\n<br/>\n\n⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n\n<br/>\n`
+        markdown += this.projectInfoMarkdown;
+        markdown += `## End-point: ${method.name}\n`;
+        markdown += method?.request?.description !== undefined ? `${method?.request?.description || ''}\n\n` : ``;
+        markdown += `### Method: ${method?.request?.method}\n\n`;
+        markdown += `>\`\`\`\n`;
+        markdown += `>${method?.request?.url?.raw}\n`;
+        markdown += `>\`\`\`\n\n`;
+        markdown += this.readRequestOptions(method?.request);
+        markdown += this.readFormDataBody(method?.request?.body);
+        markdown += this.readQueryParams(method?.request?.url);
+        markdown += this.readAuthorization(method?.request?.auth);
+        markdown += this.readResponse(method?.response);
+        markdown += `\n`;
+        //markdown += `\n<br/>\n\n⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n\n<br/>\n`;
 
-        return markdown
+        return markdown;
     }
 
     /**
@@ -218,7 +219,7 @@ export default class PostmanToMdConverter {
      * @param {string} folderPath The name of the folder
      * @param {number} folderDeep The depth of the folder
      */
-    readItems(items, folderPath, folderDeep = 1) {
+    readItems(items, folderPath = "", folderDeep = 1) {
         let markdown = '';
         const documentationStartAtDepth = 1;
 
@@ -241,7 +242,7 @@ export default class PostmanToMdConverter {
                 
                 if(item.name){
                     nextFolderPath = folderPath + item.name + '/';
-                    markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [Documentation of : ${item.name}](${nextFolderPath}TOC.md)\n`;
+                    markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [Documentation of : ${item.name}](./${nextFolderPath}TOC.md)\n`;
                 } else {
                     --nextFolderDeep;
                 }
@@ -251,9 +252,9 @@ export default class PostmanToMdConverter {
 
                 // Process the method
                 let methodMarkdown = this.readMethods(item);
-                markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](${folderPath + item.name}.md)\n`;
+                markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](./${folderPath + item.name}.md)\n`;
                 
-                writeFile(methodMarkdown, folderPath + item.name + ".md");
+                writeFile(methodMarkdown, this.outputFolder + folderPath + item.name + ".md");
             }
         });
         
@@ -262,11 +263,11 @@ export default class PostmanToMdConverter {
             let regex = new RegExp(`(\\t){${folderDeep-1}}- \\[`, "g");
 
             let tableOfContentsMarkdown = this.projectInfoMarkdown;
-            tableOfContentsMarkdown += "## Table of contents\n\n"
-            tableOfContentsMarkdown += markdown.replaceAll(regex, '- [');
+            tableOfContentsMarkdown += "## Table of contents\n\n";
+            tableOfContentsMarkdown += markdown.replaceAll(regex, '- [').replaceAll(folderPath, '');
 
             // Write the table of contents
-            writeFile(tableOfContentsMarkdown, folderPath + "TOC.md");
+            writeFile(tableOfContentsMarkdown,  this.outputFolder + folderPath + "TOC.md");
         }
 
         return markdown;

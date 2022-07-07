@@ -6,7 +6,7 @@ import chalk from 'chalk';
  * @param {string} content 
  */
 export default function writeFile(content, fileName) {
-    fileName = fileName.replaceAll(' ', '_')
+    fileName = fileName.replaceAll(' ', '_');
     let folder = fileName.replace(/\/[^\/]+\/?$/, '');
 
     writeDirectory(folder);
@@ -16,7 +16,7 @@ export default function writeFile(content, fileName) {
             console.error(chalk.red(`Error when writing file ${fileName}`));
             throw err;
         }
-        console.log(chalk.green(`File was created correctly ${fileName}`))
+        console.log(chalk.green(`File was created correctly ${fileName}`));
     });
 }
 
