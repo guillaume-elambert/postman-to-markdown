@@ -11,7 +11,7 @@ export default function init() {
   if (path.length > 0) {
 
     for (let i = 0; i < path.length; i++) {
-      new PostmanToMdConverter(path[i]).convert();
+      new PostmanToMdConverter(path[i]).convertAndSaveToMarkdown();
     }
   } else {
     console.log(chalk.red(`Path of json file is required.`));

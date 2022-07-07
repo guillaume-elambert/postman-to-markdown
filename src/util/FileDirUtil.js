@@ -11,9 +11,12 @@ export default function writeFile(content, fileName) {
 
     writeDirectory(folder);
 
-    fs.writeFile(`${fileName}.md`, content, (err) => {
-        if (err) throw err;
-        console.log(chalk.green(`Documentation was created correctly ${fileName}.md`))
+    fs.writeFile(fileName, content, (err) => {
+        if (err){
+            console.error(chalk.red(`Error when writing file ${fileName}`));
+            throw err;
+        }
+        console.log(chalk.green(`File was created correctly ${fileName}`))
     });
 }
 
@@ -22,6 +25,9 @@ export default function writeFile(content, fileName) {
  * @param {string} dirpath 
  */
 export function writeDirectory(dirpath) {
+
+    if(fs.existsSync(dirpath)) return;
+    
     fs.mkdirSync(dirpath, {
         recursive: true
     });

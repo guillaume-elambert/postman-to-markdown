@@ -6,45 +6,48 @@ export default class PostmanToMdConverter {
 
     constructor(postmanFilePath) {
         this.postmanFilePath = postmanFilePath;
-        this.initialFolder = postmanFilePath.replace(/\/[^\/]+\/?$/, '') + '/' + "docs/";
-        this.markdown = "";
+        this.projectInfoMarkdown = "";
+        this.projectName = "";
+
+        // Get the folder separated from the file name
+        var folderWithFileSeparated = /^(.*\/)([^\/]+\/?)$/.exec(postmanFilePath);
+
+        this.initialFolder = folderWithFileSeparated[1]
+        this.outputFolder = this.initialFolder + "docs/" + folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_') + "/";
     }
-
-
-    convert() {
-        console.log(chalk.green(`Reading file ${this.postmanFilePath}`))
-
-        if (fs.existsSync(this.postmanFilePath)) {
-            console.log(chalk.green(`Generating markdown file ...`));
-
-            let rawData = fs.readFileSync(this.postmanFilePath);
-            this.docJson = JSON.parse(rawData);
-
-            let temp = JSON.stringify(this.docJson);
-
-            for (let i = 0; i < this.docJson.variable.length; ++i) {
-                let variable = this.docJson.variable[i];
-                temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`)
-            }
-
-            this.docJson = JSON.parse(temp);
-
-            this.createStructureOfMarkdown();
-
-        } else {
-            console.log(chalk.red(`Path is not valid or the file not exist.`));
-        }
-    }
-
 
     /**
-     * Create structure of markdown documentation
+     * Create structure of markdown documentation and save it to files
      */
-    createStructureOfMarkdown() {
-        this.markdown += `# Project: ${this.docJson.info.name}\n`
-        this.markdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n` : ``
+    convertAndSaveToMarkdown() {
+        console.log(chalk.green(`Reading file ${this.postmanFilePath}`))
 
-        this.readItems(this.docJson.item, this.initialFolder)
+        if (!fs.existsSync(this.postmanFilePath)) {
+            console.log(chalk.red(`Path is not valid or the file not exist.`));
+            return;
+        }
+
+        console.log(chalk.green(`Generating markdown file ...`));
+
+        let rawData = fs.readFileSync(this.postmanFilePath);
+        this.docJson = JSON.parse(rawData);
+
+        let temp = JSON.stringify(this.docJson);
+
+        for (let i = 0; i < this.docJson.variable.length; ++i) {
+            let variable = this.docJson.variable[i];
+            temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`)
+        }
+
+        this.docJson = JSON.parse(temp);
+        this.projectName = this.docJson.info.name;
+
+        
+        this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`
+        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n` : ``
+        
+
+        this.readItems(this.docJson.item, this.outputFolder)
     }
 
     /**
@@ -159,20 +162,16 @@ export default class PostmanToMdConverter {
 
             let url = originalRequest.url.raw;
 
-            for (let j = 0; originalRequest.url.variable && j < originalRequest.url.variable.length; j++) {
+            
+            for (let j = 0; originalRequest?.url?.variable && j < originalRequest.url.variable.length; j++) {
                 let variable = originalRequest.url.variable[j];
                 url = url.replaceAll(`:${variable.key}`, `${variable.value}`)
             }
 
-            //for(let j = 0; originalRequest.url.request && j < originalRequest.url.request.length; j++){
-            //    let requestVariable = originalRequest.url.variable[j];
-            //    url = url.replaceAll(`${requestVariable.key}=`, `${requestVariable.value}`)
-            //}
-
             markdown += `curl --location --request ${originalRequest.method} '${url}'`
             if (originalRequest.header) markdown += "\\\n";
 
-            for (let j = 0; j < originalRequest.header.length; j++) {
+            for (let j = 0; originalRequest?.header && j < originalRequest.header.length; j++) {
                 let header = originalRequest.header[j]
                 markdown += `--header '${header.key}: ${header.value}' \\\n`
             }
@@ -208,23 +207,68 @@ export default class PostmanToMdConverter {
         markdown += this.readAuthorization(method?.request?.auth)
         markdown += this.readResponse(method?.response)
         markdown += `\n`
-        markdown += `\n<br/>\n\n⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n\n<br/>\n`
+        //markdown += `\n<br/>\n\n⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃ ⁃\n\n<br/>\n`
 
         return markdown
     }
 
     /**
      * Read items of json postman
-     * @param {Array} items
+     * @param {Array} items The items to process
+     * @param {string} folderPath The name of the folder
+     * @param {number} folderDeep The depth of the folder
      */
-    readItems(items, folderName) {
+    readItems(items, folderPath, folderDeep = 1) {
+        let markdown = '';
+        const documentationStartAtDepth = 1;
+
         items.forEach(item => {
-            if (item.item) {
-                this.readItems(item.item, folderName + item.name + '/', )
-            } else {
-                let temp = this.readMethods(item)
-                writeFile(temp, folderName + item.name)
+            let containsPathParam = false;
+            let nextFolderDeep = folderDeep + 1;
+
+            item.name = item.name.replaceAll(' ', '_').toLowerCase().replace(/\/$/g, '');
+            let tempItemName = item.name.replaceAll(/\{\w*\}\/?/g, '').replace(/\/$/g, '');
+
+            if(tempItemName != item.name){
+                containsPathParam = true;
+                item.name = tempItemName;
             }
-        })
+            
+            // Entering : the item contains an other item 
+            //      => process the child item
+            if (item.item) {
+                let nextFolderPath = folderPath;
+                
+                if(item.name){
+                    nextFolderPath = folderPath + item.name + '/';
+                    markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [Documentation of : ${item.name}](${nextFolderPath}TOC.md)\n`;
+                } else {
+                    --nextFolderDeep;
+                }
+                
+                markdown += this.readItems(item.item, nextFolderPath, nextFolderDeep);
+            } else {
+
+                // Process the method
+                let methodMarkdown = this.readMethods(item);
+                markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](${folderPath + item.name}.md)\n`;
+                
+                writeFile(methodMarkdown, folderPath + item.name + ".md");
+            }
+        });
+        
+        if(folderDeep >= documentationStartAtDepth) {
+            // Regex to get the right indent in the TOC
+            let regex = new RegExp(`(\\t){${folderDeep-1}}- \\[`, "g");
+
+            let tableOfContentsMarkdown = this.projectInfoMarkdown;
+            tableOfContentsMarkdown += "## Table of contents\n\n"
+            tableOfContentsMarkdown += markdown.replaceAll(regex, '- [');
+
+            // Write the table of contents
+            writeFile(tableOfContentsMarkdown, folderPath + "TOC.md");
+        }
+
+        return markdown;
     }
 }
