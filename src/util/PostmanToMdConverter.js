@@ -4,16 +4,33 @@ import writeFile from './FileDirUtil.js';
 
 export default class PostmanToMdConverter {
 
-    constructor(postmanFilePath) {
+
+    constructor(postmanFilePath, documentationStartAtDepth = 1, outputFolder = undefined, noToc = false, noPathParam = false) {
         this.postmanFilePath = postmanFilePath;
         this.projectInfoMarkdown = "";
         this.projectName = "";
+        this.documentationStartAtDepth = 1;
+        this.noToc = typeof noToc === 'boolean' && noToc;
+        this.noPathParam = typeof noPathParam === 'boolean' && noPathParam;
+
+        if(documentationStartAtDepth && documentationStartAtDepth > 0){
+            this.documentationStartAtDepth = documentationStartAtDepth;
+        }
+
+        this.docJson = undefined;
 
         // Get the folder separated from the file name
         var folderWithFileSeparated = /^(.*\/)([^\/]+\/?)$/.exec(postmanFilePath);
 
         this.initialFolder = folderWithFileSeparated[1]
-        this.outputFolder = this.initialFolder + "docs/" + folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_') + "/";
+
+        if(outputFolder){
+            this.outputFolder = outputFolder;
+            if(outputFolder.charAt(outputFolder.length-1) != "/") this.outputFolder += "/";
+            return;
+        }
+
+        this.outputFolder = `${this.initialFolder}docs/` + folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_') + "/";
     }
 
     /**
@@ -44,7 +61,10 @@ export default class PostmanToMdConverter {
 
         
         this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`;
-        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n<br/>\n\n` : ``;
+
+        if(this.docJson?.info?.description !== undefined && this.docJson?.info?.description != ""){
+            this.projectInfoMarkdown += `**Project description**<br/>\n ${this.docJson?.info?.description}\n\n<br/>\n\n`;
+        }
         
 
         this.readItems(this.docJson.item);
@@ -205,7 +225,10 @@ export default class PostmanToMdConverter {
 
         markdown += this.projectInfoMarkdown;
         markdown += `## End-point: ${method.name}\n\n<br/>\n\n`;
-        markdown += method?.request?.description !== undefined && method?.request?.description != "" ? `### Description:\n\n${method?.request?.description}\n\n<br/>\n\n` : ``;
+
+        if(method?.request?.description !== undefined && method?.request?.description != ""){
+            markdown +=  `### Description:\n\n${method?.request?.description}\n\n<br/>\n\n`;
+        }
         
         if(method?.request?.method){
 
@@ -264,56 +287,96 @@ export default class PostmanToMdConverter {
      * @param {string} folderPath The name of the folder
      * @param {number} folderDeep The depth of the folder
      */
-    readItems(items, folderPath = "", folderDeep = 1) {
-        let markdown = '';
-        const documentationStartAtDepth = 1;
+    readItems(items, parent = undefined, folderPath = "", folderDeep = 0) {
+        let markdownSubItems = '';
+        let markdownMethods = '';
+        let currentItem = 0;
 
-        items.forEach(item => {
-            let containsPathParam = false;
+        items.sort((itemA, itemB) => itemA.name.localeCompare(itemB.name)).forEach(item => {
             let nextFolderDeep = folderDeep + 1;
+            let itemNameFolderReady = item.name;
+            let noPathParamName;
 
-            item.name = item.name.replaceAll(' ', '_').toLowerCase().replace(/\/$/g, '');
-            let tempItemName = item.name.replaceAll(/\{\w*\}\/?/g, '').replace(/\/$/g, '');
-
-            if(tempItemName != item.name){
-                containsPathParam = true;
-                item.name = tempItemName;
+            //Entering : the user don't wants path parameters
+            if(this.noPathParam){
+                noPathParamName = itemNameFolderReady.replaceAll(/\{\w*\}\/?/g, '').replace(/\/$/g, '');
+                itemNameFolderReady = noPathParamName;
             }
             
+            itemNameFolderReady = itemNameFolderReady.replaceAll(' ', '_').replace(/\/$/g, '').toLowerCase();
+            
+
+
             // Entering : the item contains an other item 
             //      => process the child item
             if (item.item) {
                 let nextFolderPath = folderPath;
+                let nextParent = item;
+
                 
-                if(item.name){
-                    nextFolderPath = folderPath + item.name + '/';
-                    markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [Documentation of : ${item.name}](./${nextFolderPath}TOC.md)\n`;
+                if(parent === undefined){
+                    item.urlPath = (this.noPathParam ? noPathParamName : item.name) + "/";
                 } else {
-                    --nextFolderDeep;
+                    item.urlPath = parent.urlPath + (this.noPathParam ? noPathParamName : item.name) + "/";
                 }
+
                 
-                markdown += this.readItems(item.item, nextFolderPath, nextFolderDeep);
+                //Entering : the user don't wants path parameters and the current item is a path parameter
+                if(this.noPathParam && itemNameFolderReady === ""){
+
+                    --nextFolderDeep;
+                    nextParent = parent;
+                } else {
+
+                    nextFolderPath = folderPath + itemNameFolderReady + '/';
+                    markdownSubItems += `${++currentItem > 1 ? "<br/><br/>" : ""}\n`
+                    markdownSubItems += `${folderDeep - this.documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - this.documentationStartAtDepth)}`
+                    markdownSubItems += `- [Documentation of : ${item.name}](./${nextFolderPath}TOC.md)`;
+                }
+
+                markdownSubItems += this.readItems(item.item, nextParent, nextFolderPath, nextFolderDeep);
+
             } else {
 
-                // Process the method
-                let methodMarkdown = this.readMethods(item);
-                markdown += `${folderDeep - documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](./${folderPath + item.name}.md)\n`;
-                
-                writeFile(methodMarkdown, this.outputFolder + folderPath + item.name + ".md");
+                if(folderDeep >= this.documentationStartAtDepth){
+                    // Process the method
+                    let currentMethodMarkdown = this.readMethods(item);
+                    markdownMethods += `\n${folderDeep - this.documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - this.documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](./${folderPath + itemNameFolderReady}.md)`;
+                    
+                    if(folderDeep >= this.documentationStartAtDepth){
+                        writeFile(currentMethodMarkdown, this.outputFolder + folderPath + item.name + ".md");
+                    }
+                }
             }
         });
+
+        // Entering : the item should not be documented
+        //      => return nothing and don't create Ttable of content
+        if(folderDeep < this.documentationStartAtDepth || this.noToc) return "";
+
+        let markdown = markdownMethods + markdownSubItems;
+
+        // Regex to get the right indent in the TOC
+        let regex = new RegExp(`(\\t){${folderDeep-1}}- \\[`, "g");
+
+        let tableOfContentsMarkdown = this.projectInfoMarkdown;
         
-        if(folderDeep >= documentationStartAtDepth) {
-            // Regex to get the right indent in the TOC
-            let regex = new RegExp(`(\\t){${folderDeep-1}}- \\[`, "g");
+        if(parent){
+            tableOfContentsMarkdown += `## ${parent.urlPath}\n`
 
-            let tableOfContentsMarkdown = this.projectInfoMarkdown;
-            tableOfContentsMarkdown += "## Table of contents\n\n";
-            tableOfContentsMarkdown += markdown.replaceAll(regex, '- [').replaceAll(folderPath, '');
+            if(parent?.description !== undefined && parent?.description != ""){
+                tableOfContentsMarkdown +=  `### Description:\n\n${parent?.description}\n\n<br/>\n\n`;
+            }
 
-            // Write the table of contents
-            writeFile(tableOfContentsMarkdown,  this.outputFolder + folderPath + "TOC.md");
+            tableOfContentsMarkdown += `#`
         }
+
+        tableOfContentsMarkdown += `## Table of contents\n\n`;
+        tableOfContentsMarkdown += markdown.replaceAll(regex, '- [').replaceAll("./" + folderPath, '');
+
+        // Write the table of contents
+        writeFile(tableOfContentsMarkdown,  this.outputFolder + folderPath + "TOC.md");
+        
 
         return markdown;
     }
