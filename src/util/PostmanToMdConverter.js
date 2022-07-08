@@ -44,7 +44,7 @@ export default class PostmanToMdConverter {
 
         
         this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`;
-        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n` : ``;
+        this.projectInfoMarkdown += this.docJson.info.description !== undefined ? `${this.docJson.info.description || ''}\n\n<br/>\n\n` : ``;
         
 
         this.readItems(this.docJson.item);
@@ -57,8 +57,7 @@ export default class PostmanToMdConverter {
     readAuthorization(auth) {
         let markdown = ''
         if (auth) {
-            markdown += `### 🔑 Authentication ${auth.type}\n`
-            markdown += `\n`
+            markdown += `### 🔑 Authentication ${auth.type}\n\n`
             markdown += `|Param|value|Type|\n`
             markdown += `|---|---|---|\n`
             if (auth.bearer) {
@@ -66,8 +65,7 @@ export default class PostmanToMdConverter {
                     markdown += `|${auth.key}|${auth.value}|${auth.type}|\n`
                 })
             }
-            markdown += `\n`
-            markdown += `\n`
+            markdown += `\n\n<br/>\n\n`
         }
 
         return markdown
@@ -81,15 +79,17 @@ export default class PostmanToMdConverter {
     readRequestOptions(request) {
         let markdown = ''
         if (request) {
+
+            markdown += `### Headers\n`;
+            markdown += `\n`;
+            markdown += `|Content-Type|Value|\n`;
+            markdown += `|---|---|\n`;
+
             request.header.map(header => {
-                markdown += `### Headers\n`;
-                markdown += `\n`;
-                markdown += `|Content-Type|Value|\n`;
-                markdown += `|---|---|\n`;
                 markdown += `|${header.key}|${header.value}|\n`;
-                markdown += `\n`;
-                markdown += `\n`;
             })
+
+            markdown += `\n\n<br/>\n\n`;
         }
         return markdown;
     }
@@ -97,15 +97,15 @@ export default class PostmanToMdConverter {
     readQueryParams(url) {
         let markdown = ''
         if (url?.query) {
-            markdown += `### Query Params\n`;
-            markdown += `\n`;
+            markdown += `### Query Params\n\n`;
             markdown += `|Param|value|\n`;
             markdown += `|---|---|\n`;
+
             url.query.map(query => {;
                 markdown += `|${query.key}|${query.value}|\n`;
             });
-            markdown += `\n`;
-            markdown += `\n`;
+            
+            markdown += `\n\n<br/>\n\n`;
         }
 
         return markdown;
@@ -124,8 +124,7 @@ export default class PostmanToMdConverter {
                 markdown += `\n`;
                 markdown += `\`\`\`json\n`;
                 markdown += `${body.raw}\n`;
-                markdown += `\`\`\`\n`;
-                markdown += `\n`;
+                markdown += `\`\`\`\n\n<br/>\n\n`;
             }
 
             if (body.mode === 'formdata') {
@@ -136,8 +135,7 @@ export default class PostmanToMdConverter {
                 body.formdata.map(form => {;
                     markdown += `|${form.key}|${form.type === 'file' ? form.src : form.value !== undefined ? form.value.replace(/\\n/g,'') : '' }|${form.type}|\n`;
                 });
-                markdown += `\n`;
-                markdown += `\n`;
+                markdown += `\n\n<br/>\n\n`;
             }
         }
 
@@ -150,7 +148,7 @@ export default class PostmanToMdConverter {
      */
     readResponse(responses) {
         let markdown = '';
-        markdown += `<br/>\n\n### Examples\n\n<br/>\n\n`;
+        markdown += `### Examples\n\n<br/>\n\n`;
 
         for (let i = 0; i < responses.length; i++) {
             let response = responses[i];
@@ -178,7 +176,17 @@ export default class PostmanToMdConverter {
             if (originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`;
             markdown += `\`\`\`\n`;
 
-            markdown += `Response :\n`;
+            markdown += `Response `
+            
+            if(response.code || response.status){
+                markdown += "(";
+                if(response.code) markdown += `${response.code}`;
+                if(response.code && response.status) markdown += " ";
+                if(response.status) markdown += `${response.status}`;
+                markdown += ") ";
+            }
+
+            markdown += `:\n`;
             markdown += `\`\`\`json\n`;
             markdown += `${response.body}\n`;
             markdown += `\`\`\`\n`;
@@ -196,12 +204,49 @@ export default class PostmanToMdConverter {
         let markdown = ''
 
         markdown += this.projectInfoMarkdown;
-        markdown += `## End-point: ${method.name}\n`;
-        markdown += method?.request?.description !== undefined ? `${method?.request?.description || ''}\n\n` : ``;
-        markdown += `### Method: ${method?.request?.method}\n\n`;
-        markdown += `>\`\`\`\n`;
-        markdown += `>${method?.request?.url?.raw}\n`;
-        markdown += `>\`\`\`\n\n`;
+        markdown += `## End-point: ${method.name}\n\n<br/>\n\n`;
+        markdown += method?.request?.description !== undefined && method?.request?.description != "" ? `### Description:\n\n${method?.request?.description}\n\n<br/>\n\n` : ``;
+        
+        if(method?.request?.method){
+
+            method.request.method = method.request.method.toUpperCase();
+            let methodBadgeUri = `https://img.shields.io/badge/-${method?.request?.method}-`;
+
+            switch (method.request.method) {
+                case 'GET':
+                    methodBadgeUri += 'green';
+                    break;
+
+                case 'POST':
+                    methodBadgeUri += 'yellow';
+                    break;
+
+                case 'PUT':
+                    methodBadgeUri += 'blue';
+                    break;
+
+                case 'DELETE':
+                    methodBadgeUri += 'red';
+                    break;
+
+                default:
+                    methodBadgeUri += 'gray';
+                    break;
+            }
+            
+            methodBadgeUri += "?style=for-the-badge";
+
+            markdown += `>\n`;
+            markdown += `><pre><a href=""><img align="center" src="${methodBadgeUri}" title="Method to use : ${method.request.method}"></a>   <code>${method?.request?.url?.raw}</code></pre>\n`;
+            markdown += `>\n`;
+
+        } else {
+            markdown += `>\`\`\`\n`;
+            markdown += `>${method?.request?.url?.raw}\n`;
+            markdown += `>\`\`\``;
+        }
+
+        markdown += `\n\n<br/>\n\n`;
         markdown += this.readRequestOptions(method?.request);
         markdown += this.readFormDataBody(method?.request?.body);
         markdown += this.readQueryParams(method?.request?.url);
