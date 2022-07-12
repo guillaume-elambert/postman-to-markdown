@@ -2,6 +2,10 @@ import fs from 'fs'
 import chalk from 'chalk'
 import writeFile from './FileDirUtil.js';
 
+
+/**
+ * Class of PostmanToMdConverter
+ */
 export default class PostmanToMdConverter {
 
 
@@ -30,6 +34,7 @@ export default class PostmanToMdConverter {
             return;
         }
 
+        // If the output folder is not defined, use the folder "./docs" relative to the Postman Collection file
         this.outputFolder = `${this.initialFolder}docs/` + folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_') + "/";
     }
 
@@ -51,6 +56,7 @@ export default class PostmanToMdConverter {
 
         let temp = JSON.stringify(this.docJson);
 
+        // Replace all global variables in the Postman collection file
         for (let i = 0; i < this.docJson.variable.length; ++i) {
             let variable = this.docJson.variable[i];
             temp = temp.replaceAll(`\{\{${variable.key}\}\}`, `${variable.value}`);
@@ -60,12 +66,11 @@ export default class PostmanToMdConverter {
         this.projectName = this.docJson.info.name;
 
         
-        this.projectInfoMarkdown += `# Project: ${this.projectName}\n\n`;
+        this.projectInfoMarkdown += `# Project: ${this.projectName} (v${this.docJson?.info?.version})\n\n`;
 
         if(this.docJson?.info?.description !== undefined && this.docJson?.info?.description != ""){
-            this.projectInfoMarkdown += `**Project description**<br/>\n ${this.docJson?.info?.description}\n\n<br/>\n\n`;
+            this.projectInfoMarkdown += `**Project description**<br/>\n ${this.docJson?.info?.description}\n___\n\n<br/>\n\n`;
         }
-        
 
         this.readItems(this.docJson.item);
     }
@@ -114,6 +119,12 @@ export default class PostmanToMdConverter {
         return markdown;
     }
 
+
+    /**
+     * Read query parameters in an url.
+     * @param {string} url url with query parameters
+     * @returns {string} The markdown corresponding to the table of query parameters
+     */
     readQueryParams(url) {
         let markdown = ''
         if (url?.query) {
@@ -170,6 +181,7 @@ export default class PostmanToMdConverter {
         let markdown = '';
         markdown += `### Examples\n\n<br/>\n\n`;
 
+        // Iterate over all responses
         for (let i = 0; i < responses.length; i++) {
             let response = responses[i];
             let originalRequest = response.originalRequest;
@@ -180,7 +192,7 @@ export default class PostmanToMdConverter {
 
             let url = originalRequest.url.raw;
 
-            
+            // Replace query parameters in the url by there values
             for (let j = 0; originalRequest?.url?.variable && j < originalRequest.url.variable.length; j++) {
                 let variable = originalRequest.url.variable[j];
                 url = url.replaceAll(`:${variable.key}`, `${variable.value}`);
@@ -189,15 +201,20 @@ export default class PostmanToMdConverter {
             markdown += `curl --location --request ${originalRequest.method} '${url}'`
             if (originalRequest.header) markdown += "\\\n";
 
+            // Add headers in the curl request example
             for (let j = 0; originalRequest?.header && j < originalRequest.header.length; j++) {
                 let header = originalRequest.header[j];
                 markdown += `--header '${header.key}: ${header.value}' \\\n`;
             }
+            
             if (originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`;
+            
             markdown += `\`\`\`\n`;
+
 
             markdown += `Response `
             
+            // Add response of curl command
             if(response.code || response.status){
                 markdown += "(";
                 if(response.code) markdown += `${response.code}`;
@@ -230,11 +247,13 @@ export default class PostmanToMdConverter {
             markdown +=  `### Description:\n\n${method?.request?.description}\n\n<br/>\n\n`;
         }
         
+        // Read request of each method
         if(method?.request?.method){
 
             method.request.method = method.request.method.toUpperCase();
             let methodBadgeUri = `https://img.shields.io/badge/-${method?.request?.method}-`;
 
+            // Handle badge color depending on the method used in the request
             switch (method.request.method) {
                 case 'GET':
                     methodBadgeUri += 'green';
@@ -313,7 +332,7 @@ export default class PostmanToMdConverter {
                 let nextFolderPath = folderPath;
                 let nextParent = item;
 
-                
+                // If there is no parent, the path is the current item name
                 if(parent === undefined){
                     item.urlPath = (this.noPathParam ? noPathParamName : item.name) + "/";
                 } else {
@@ -323,7 +342,6 @@ export default class PostmanToMdConverter {
                 
                 //Entering : the user don't wants path parameters and the current item is a path parameter
                 if(this.noPathParam && itemNameFolderReady === ""){
-
                     --nextFolderDeep;
                     nextParent = parent;
                 } else {

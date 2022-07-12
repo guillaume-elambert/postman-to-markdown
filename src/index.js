@@ -13,6 +13,7 @@ export default function init() {
 
   let startAt, outputFolder, noToc, noPathParam;
 
+  //Iterate over the options
   for (const optKey in args) {
     switch(optKey) {
       case `help`:
@@ -70,17 +71,22 @@ export default function init() {
     }
   }
 
-  if (path.length > 0) {
-  
-    for (let i = 0; i < path.length; i++) {
-      new PostmanToMdConverter(path[i], startAt, outputFolder, noToc, noPathParam).convertAndSaveToMarkdown();
-    }
-  } else {
+  if (path.length <= 0) {
     console.log(chalk.red(`Path of json file is required.\n${getHelp()}`));
+    process.exit(1);
+  }
+  
+  //Iterate over the files passed as arguments
+  for (let i = 0; i < path.length; i++) {
+    new PostmanToMdConverter(path[i], startAt, outputFolder, noToc, noPathParam).convertAndSaveToMarkdown();
   }
 }
 
 
+/**
+ * Method that return the help message.
+ * @returns {string} The help message.
+ */
 function getHelp(){
   return `
   Usage:
