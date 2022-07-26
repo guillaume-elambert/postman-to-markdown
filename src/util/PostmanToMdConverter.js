@@ -200,17 +200,17 @@ export default class PostmanToMdConverter {
                 url = url.replaceAll(`:${variable.key}`, `${variable.value}`);
             }
 
-            markdown += `curl --location --request ${originalRequest.method} '${url}'`
-            if (originalRequest.header) markdown += "\\\n";
+            markdown += `curl --location --request ${originalRequest.method} '${url}'`;
 
             // Add headers in the curl request example
             for (let j = 0; originalRequest?.header && j < originalRequest.header.length; j++) {
                 let header = originalRequest.header[j];
-                markdown += `--header '${header.key}: ${header.value}' \\\n`;
+                markdown += ` \\\n--header '${header.key}: ${header.value}'`;
             }
             
-            if (originalRequest.body) markdown += `--data-raw '${originalRequest.body.raw}'\n`;
-            
+            if (originalRequest.body) markdown += ` \\\n--data-raw '${originalRequest.body.raw}'`;
+            markdown += `\n`;
+
             markdown += `\`\`\`\n`;
 
 
