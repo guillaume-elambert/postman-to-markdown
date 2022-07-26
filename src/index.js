@@ -68,7 +68,6 @@ export default function init() {
       case(`html-ready`):
       case(`H`):
         htmlReady = !!(parseInt(args[optKey]) || args[optKey] === "true");
-        console.log("HTML READY !!!!!!!!", htmlReady, args[optKey]);
       break;
 
       default:

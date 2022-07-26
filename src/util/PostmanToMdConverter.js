@@ -105,7 +105,7 @@ export default class PostmanToMdConverter {
      */
     readRequestOptions(request) {
         let markdown = ''
-        if (request) {
+        if (request && request.header && request.header.length > 0) {
 
             markdown += `### Headers\n`;
             markdown += `\n`;
@@ -315,19 +315,16 @@ export default class PostmanToMdConverter {
         let regexToEncodeUri = /[^a-zA-Z0-9/:?#[\]@!$&'()*+,;=\-._~]/g;
 
         if(this.htmlReady){
-            let temp = folderPath;
             folderPath = folderPath.replaceAll(regexToEncodeUri, "");
         }
 
         items.sort((itemA, itemB) => itemA.name.localeCompare(itemB.name)).forEach(item => {
             let nextFolderDeep = folderDeep + 1;
             let itemNameFolderReady = item.name;
-            let noPathParamName;
 
             //Entering : the user don't wants path parameters
             if(this.noPathParam){
-                noPathParamName = itemNameFolderReady.replaceAll(/\{\w*\}\/?/g, '').replace(/\/$/g, '');
-                itemNameFolderReady = noPathParamName;
+                itemNameFolderReady = itemNameFolderReady.replaceAll(/\{\w*\}\/?/g, '').replace(/\/$/g, '');
             }
             
             itemNameFolderReady = itemNameFolderReady.replaceAll(' ', '_').replace(/\/$/g, '').toLowerCase();
@@ -349,7 +346,7 @@ export default class PostmanToMdConverter {
                 } else {
                     item.urlPath = parent.urlPath + (this.noPathParam ? noPathParamName : item.name) + "/";
                 }
-
+                
                 
                 //Entering : the user don't wants path parameters and the current item is a path parameter
                 if(this.noPathParam && itemNameFolderReady === ""){
@@ -358,35 +355,35 @@ export default class PostmanToMdConverter {
                 } else {
 
                     nextFolderPath = folderPath + itemNameFolderReady + '/';
-
-                    let url = `./${nextFolderPath}README.md`;
-                    let urlEncoded = encodeURI(url.replace(regexToEncodeUri, ''));
+                    if(this.htmlReady) nextFolderPath = encodeURI(nextFolderPath.replace(regexToEncodeUri, ''));
 
                     markdownSubItems += `${++currentItem > 1 ? "<br/><br/>" : ""}\n`
                     markdownSubItems += `${folderDeep - this.documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - this.documentationStartAtDepth)}`
-                    markdownSubItems += `- [Documentation of : ${item.name}](${this.htmlReady ? urlEncoded : url})`;
+                    markdownSubItems += `- [Documentation of : ${item.name}](./${nextFolderPath})`;
                 }
-
+                
                 markdownSubItems += this.readItems(item.item, nextParent, nextFolderPath, nextFolderDeep);
 
             } else {
 
                 if(folderDeep >= this.documentationStartAtDepth){
                     // Process the method
+
                     let currentMethodMarkdown = this.readMethods(item);
                     markdownMethods += `\n`;
+
+                    let filePath = folderPath + itemNameFolderReady + '.md';
+                    if(this.htmlReady) filePath = encodeURI(filePath.replace(regexToEncodeUri, ''));
                     
                     if(folderDeep - this.documentationStartAtDepth > 0){
-                        let url = `./${folderPath + itemNameFolderReady}.md`;
-                        let urlEncoded = encodeURI(url.replace(regexToEncodeUri, ''));
 
                         markdownMethods += '\t'.repeat(folderDeep - this.documentationStartAtDepth);
                         markdownMethods += `- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}]`;
-                        markdownMethods += `(${this.htmlReady ? urlEncoded : url})`;
+                        markdownMethods += `(./${filePath})`;
                     }
                     
                     if(folderDeep >= this.documentationStartAtDepth){
-                        writeFile(currentMethodMarkdown, this.outputFolder + folderPath + itemNameFolderReady + ".md");
+                        writeFile(currentMethodMarkdown, this.outputFolder + filePath);
                     }
                 }
             }
