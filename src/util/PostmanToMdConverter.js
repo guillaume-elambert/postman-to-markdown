@@ -9,13 +9,14 @@ import writeFile from './FileDirUtil.js';
 export default class PostmanToMdConverter {
 
 
-    constructor(postmanFilePath, documentationStartAtDepth = 1, outputFolder = undefined, noToc = false, noPathParam = false) {
+    constructor(postmanFilePath, documentationStartAtDepth = 1, outputFolder = undefined, noToc = false, noPathParam = false, htmlReady = false) {
         this.postmanFilePath = postmanFilePath;
         this.projectInfoMarkdown = "";
         this.projectName = "";
         this.documentationStartAtDepth = 1;
         this.noToc = typeof noToc === 'boolean' && noToc;
         this.noPathParam = typeof noPathParam === 'boolean' && noPathParam;
+        this.htmlReady = typeof htmlReady === 'boolean' && htmlReady;
 
         if(documentationStartAtDepth && documentationStartAtDepth > 0){
             this.documentationStartAtDepth = documentationStartAtDepth;
@@ -65,8 +66,9 @@ export default class PostmanToMdConverter {
         this.docJson = JSON.parse(temp);
         this.projectName = this.docJson.info.name;
 
-        
-        this.projectInfoMarkdown += `# Project: ${this.projectName} (v${this.docJson?.info?.version})\n\n`;
+        this.projectInfoMarkdown += `# Project: ${this.projectName}`;
+        if(this.docJson?.info?.version) this.projectInfoMarkdown += ` (v${this.docJson?.info?.version})`;
+        this.projectInfoMarkdown += `\n\n`;
 
         if(this.docJson?.info?.description !== undefined && this.docJson?.info?.description != ""){
             this.projectInfoMarkdown += `**Project description**<br/>\n ${this.docJson?.info?.description}\n___\n\n<br/>\n\n`;
@@ -310,6 +312,12 @@ export default class PostmanToMdConverter {
         let markdownSubItems = '';
         let markdownMethods = '';
         let currentItem = 0;
+        let regexToEncodeUri = /[^a-zA-Z0-9/:?#[\]@!$&'()*+,;=\-._~]/g;
+
+        if(this.htmlReady){
+            let temp = folderPath;
+            folderPath = folderPath.replaceAll(regexToEncodeUri, "");
+        }
 
         items.sort((itemA, itemB) => itemA.name.localeCompare(itemB.name)).forEach(item => {
             let nextFolderDeep = folderDeep + 1;
@@ -324,6 +332,9 @@ export default class PostmanToMdConverter {
             
             itemNameFolderReady = itemNameFolderReady.replaceAll(' ', '_').replace(/\/$/g, '').toLowerCase();
             
+            if(this.htmlReady){
+                itemNameFolderReady = itemNameFolderReady.replaceAll(regexToEncodeUri, '');
+            }
 
 
             // Entering : the item contains an other item 
@@ -347,9 +358,13 @@ export default class PostmanToMdConverter {
                 } else {
 
                     nextFolderPath = folderPath + itemNameFolderReady + '/';
+
+                    let url = `./${nextFolderPath}README.md`;
+                    let urlEncoded = encodeURI(url.replace(regexToEncodeUri, ''));
+
                     markdownSubItems += `${++currentItem > 1 ? "<br/><br/>" : ""}\n`
                     markdownSubItems += `${folderDeep - this.documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - this.documentationStartAtDepth)}`
-                    markdownSubItems += `- [Documentation of : ${item.name}](./${nextFolderPath}TOC.md)`;
+                    markdownSubItems += `- [Documentation of : ${item.name}](${this.htmlReady ? urlEncoded : url})`;
                 }
 
                 markdownSubItems += this.readItems(item.item, nextParent, nextFolderPath, nextFolderDeep);
@@ -359,10 +374,19 @@ export default class PostmanToMdConverter {
                 if(folderDeep >= this.documentationStartAtDepth){
                     // Process the method
                     let currentMethodMarkdown = this.readMethods(item);
-                    markdownMethods += `\n${folderDeep - this.documentationStartAtDepth < 0 ? '' : '\t'.repeat(folderDeep - this.documentationStartAtDepth)}- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}](./${folderPath + itemNameFolderReady}.md)`;
+                    markdownMethods += `\n`;
+                    
+                    if(folderDeep - this.documentationStartAtDepth > 0){
+                        let url = `./${folderPath + itemNameFolderReady}.md`;
+                        let urlEncoded = encodeURI(url.replace(regexToEncodeUri, ''));
+
+                        markdownMethods += '\t'.repeat(folderDeep - this.documentationStartAtDepth);
+                        markdownMethods += `- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}]`;
+                        markdownMethods += `(${this.htmlReady ? urlEncoded : url})`;
+                    }
                     
                     if(folderDeep >= this.documentationStartAtDepth){
-                        writeFile(currentMethodMarkdown, this.outputFolder + folderPath + item.name + ".md");
+                        writeFile(currentMethodMarkdown, this.outputFolder + folderPath + itemNameFolderReady + ".md");
                     }
                 }
             }
@@ -393,7 +417,7 @@ export default class PostmanToMdConverter {
         tableOfContentsMarkdown += markdown.replaceAll(regex, '- [').replaceAll("./" + folderPath, '');
 
         // Write the table of contents
-        writeFile(tableOfContentsMarkdown,  this.outputFolder + folderPath + "TOC.md");
+        writeFile(tableOfContentsMarkdown,  this.outputFolder + folderPath + "README.md");
         
 
         return markdown;

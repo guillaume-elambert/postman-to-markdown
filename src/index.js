@@ -11,7 +11,7 @@ export default function init() {
   const path = args[`_`];
   delete args[`_`];
 
-  let startAt, outputFolder, noToc, noPathParam;
+  let startAt, outputFolder, noToc, noPathParam, htmlReady;
 
   //Iterate over the options
   for (const optKey in args) {
@@ -65,6 +65,12 @@ export default function init() {
         }
       break;
 
+      case(`html-ready`):
+      case(`H`):
+        htmlReady = !!(parseInt(args[optKey]) || args[optKey] === "true");
+        console.log("HTML READY !!!!!!!!", htmlReady, args[optKey]);
+      break;
+
       default:
         console.log(chalk.red(`Unknown option: ${optKey}\n${getHelp()}`));
         process.exit(1);
@@ -78,7 +84,7 @@ export default function init() {
   
   //Iterate over the files passed as arguments
   for (let i = 0; i < path.length; i++) {
-    new PostmanToMdConverter(path[i], startAt, outputFolder, noToc, noPathParam).convertAndSaveToMarkdown();
+    new PostmanToMdConverter(path[i], startAt, outputFolder, noToc, noPathParam, htmlReady).convertAndSaveToMarkdown();
   }
 }
 
@@ -106,6 +112,8 @@ function getHelp(){
   --no-path-param, -P   Do not generate path parameters folders. Default is false.
                         ie. documentation of endpoints in api/v1/users/{id}/comments/ will 
                         be generated in folder api/v1/users/comments/.
+
+  --html-ready, -H      Generate HTML ready documentation (URI are encoded). Default is false.
 
   --start-at, -S        Start the documentation at a specific depth. Default is 1.
                         Note: Host addresss is not included in the depth.
