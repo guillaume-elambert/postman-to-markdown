@@ -318,7 +318,10 @@ export default class PostmanToMdConverter {
             folderPath = folderPath.replaceAll(regexToEncodeUri, "");
         }
 
-        items.sort((itemA, itemB) => itemA.name.localeCompare(itemB.name)).forEach(item => {
+        let sortedItems = items.sort((itemA, itemB) => itemA.name.localeCompare(itemB.name));
+        
+        for(let i = 0; i < sortedItems.length; ++i){
+            let item = sortedItems[i];
             let nextFolderDeep = folderDeep + 1;
             let itemNameFolderReady = item.name;
 
@@ -363,31 +366,29 @@ export default class PostmanToMdConverter {
                 }
                 
                 markdownSubItems += this.readItems(item.item, nextParent, nextFolderPath, nextFolderDeep);
-
-            } else {
-
-                if(folderDeep >= this.documentationStartAtDepth){
-                    // Process the method
-
-                    let currentMethodMarkdown = this.readMethods(item);
-                    markdownMethods += `\n`;
-
-                    let filePath = folderPath + itemNameFolderReady + '.md';
-                    if(this.htmlReady) filePath = encodeURI(filePath.replace(regexToEncodeUri, ''));
-                    
-                    if(folderDeep - this.documentationStartAtDepth > 0){
-
-                        markdownMethods += '\t'.repeat(folderDeep - this.documentationStartAtDepth);
-                        markdownMethods += `- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}]`;
-                        markdownMethods += `(./${filePath})`;
-                    }
-                    
-                    if(folderDeep >= this.documentationStartAtDepth){
-                        writeFile(currentMethodMarkdown, this.outputFolder + filePath);
-                    }
-                }
+                continue;
             }
-        });
+
+            if(folderDeep < this.documentationStartAtDepth) continue;
+            
+            // Process the method
+            let currentMethodMarkdown = this.readMethods(item);
+            markdownMethods += `\n`;
+
+            let filePath = folderPath + itemNameFolderReady + '.md';
+            if(this.htmlReady) filePath = encodeURI(filePath.replace(regexToEncodeUri, ''));
+            
+            //Add the markdown link for the current item in the table of content of the method
+            if(folderDeep - this.documentationStartAtDepth > 0){
+
+                markdownMethods += '\t'.repeat(folderDeep - this.documentationStartAtDepth);
+                markdownMethods += `- [${item.name.substring(0, 1).toUpperCase() + item.name.substring(1).replaceAll( '_', ' ')}]`;
+                markdownMethods += `(./${filePath})`;
+            }
+            
+            writeFile(currentMethodMarkdown, this.outputFolder + filePath);
+            
+        };
 
         // Entering : the item should not be documented
         //      => return nothing and don't create Ttable of content
