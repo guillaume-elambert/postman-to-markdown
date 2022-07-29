@@ -29,14 +29,14 @@ export default class PostmanToMdConverter {
 
         this.initialFolder = folderWithFileSeparated[1]
 
-        if(outputFolder){
-            this.outputFolder = outputFolder;
-            if(outputFolder.charAt(outputFolder.length-1) != "/") this.outputFolder += "/";
-            return;
-        }
+        // If an specific folder is specified for output, use it
+        // Otherwise use the folder of the file
+        this.outputFolder = outputFolder ? outputFolder : this.initialFolder;
+        if(this.outputFolder.charAt(this.outputFolder.length-1) != "/") this.outputFolder += "/";
 
-        // If the output folder is not defined, use the folder "./docs" relative to the Postman Collection file
-        this.outputFolder = `${this.initialFolder}docs/` + folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_') + "/";
+        // Put the documentation inside a folder named the same as the file without the extension
+        this.outputFolder += folderWithFileSeparated[2].replace(/(\.postman_collection)?\.json/, '').replaceAll(' ', '_');
+        if(this.outputFolder.charAt(this.outputFolder.length-1) != "/") this.outputFolder += "/";
     }
 
     /**
@@ -190,7 +190,7 @@ export default class PostmanToMdConverter {
             markdown += `<details><summary>Example ${i+1} • ${response.name}</summary>\n`;
             markdown += `\n`;
             markdown += "Request :\n";
-            markdown += `\`\`\`sh\n`;
+            markdown += `\`\`\`bash\n`;
 
             let url = originalRequest.url.raw;
 
@@ -308,7 +308,7 @@ export default class PostmanToMdConverter {
      * @param {string} folderPath The name of the folder
      * @param {number} folderDeep The depth of the folder
      */
-    readItems(items, parent = undefined, folderPath = "", folderDeep = 0) {
+    readItems(items, parent = undefined, folderPath = "", folderDeep = 1) {
         let markdownSubItems = '';
         let markdownMethods = '';
         let currentItem = 0;
