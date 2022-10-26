@@ -5,6 +5,8 @@
 
 This package generate markdown document from postman.
 
+It is a fork from [postman-to-markdown](https://github.com/bautistaj/postman-to-markdown) of [bautistaj](https://github.com/bautistaj/)
+
 First export the collection from postman.
 
 ![Drag Racing](./resources/export_collection.png)
@@ -16,7 +18,7 @@ Save the collection file.
 ## Install
 
 ```npm
-npm install -g postman-to-markdown
+npm install -g git+https://github.com/guillaume-elambert/postman-to-markdown.git
 ```
 
 # Usage
